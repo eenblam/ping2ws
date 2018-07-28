@@ -1,4 +1,4 @@
-package ping
+package ping2ws
 
 type Update struct {
 	Target string `json:"target"`

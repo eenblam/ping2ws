@@ -1,4 +1,4 @@
-package ping
+package ping2ws
 
 // Courtesy of github.com/icza || stackoverflow.com/users/1705598/icza
 // See https://stackoverflow.com/a/49877632

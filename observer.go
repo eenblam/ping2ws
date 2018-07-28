@@ -1,4 +1,4 @@
-package ping
+package ping2ws
 
 import (
 	"fmt"
