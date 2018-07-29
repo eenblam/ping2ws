@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"sync"
 	"time"
 
 	"golang.org/x/net/icmp"
@@ -12,11 +13,13 @@ import (
 )
 
 type Observer struct {
+	sync.Mutex
 	Target   string
 	Broker   Broker
 	stopCh   chan struct{}
 	updateCh chan Update
 	status   bool
+	running  bool
 }
 
 func NewObserver(target string, broker *Broker) (*Observer, error) {
@@ -30,6 +33,7 @@ func NewObserver(target string, broker *Broker) (*Observer, error) {
 		stopCh:   make(chan struct{}),
 		updateCh: make(chan Update),
 		status:   false,
+		running:  true,
 	}, nil
 }
 
@@ -63,6 +67,7 @@ func (o *Observer) Start() {
 	for {
 		select {
 		case <-o.stopCh:
+			o.log("stopped")
 			return
 		default:
 			wb, marshalErr := wm.Marshal(nil)
@@ -126,14 +131,18 @@ func (o *Observer) Start() {
 			time.Sleep(1 * time.Second)
 		}
 	}
-	o.log("stopped")
 }
 
 // Stop signals that the Observer's Start() method should exit.
 // Calling this twice will cause a panic, so don't do that.
 func (o *Observer) Stop() {
-	o.log("received stop")
-	close(o.stopCh)
+	o.Lock()
+	if o.running {
+		o.running = false
+		o.log("received stop")
+		close(o.stopCh)
+	}
+	o.Unlock()
 }
 
 // Down publishes a negative status for the observed resource.
