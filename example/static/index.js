@@ -3,7 +3,7 @@ function getOrAddElementById(id) {
   if (e === null) {
     // Create new element and append to #update-container
     let list = document.getElementById("update-list");
-    let e = document.createElement("li");
+    e = document.createElement("li");
     e.id = id;
     list.appendChild(e);
   }
