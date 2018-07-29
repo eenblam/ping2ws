@@ -1,9 +1,14 @@
 package ping2ws
 
+import (
+	"sync"
+)
+
 // Courtesy of github.com/icza || stackoverflow.com/users/1705598/icza
 // See https://stackoverflow.com/a/49877632
 
 type Broker struct {
+	sync.Mutex
 	// stopCh is used to signal the broker to halt
 	stopCh chan struct{}
 	// publishCh receives messages to the broker, which are then forwarded to subscribers
@@ -12,6 +17,7 @@ type Broker struct {
 	subCh chan chan interface{}
 	// unsubCh receives channels from subscribers when they're ready to unsubscribe
 	unsubCh chan chan interface{}
+	running bool
 }
 
 func NewBroker() *Broker {
@@ -20,6 +26,7 @@ func NewBroker() *Broker {
 		publishCh: make(chan interface{}, 1),
 		subCh:     make(chan chan interface{}, 1),
 		unsubCh:   make(chan chan interface{}, 1),
+		running:   true,
 	}
 }
 
@@ -54,7 +61,11 @@ func (b *Broker) Start() {
 // Stop closes the broker's stop channel.
 // The channel closure is received in Start, causing it to exit.
 func (b *Broker) Stop() {
-	close(b.stopCh)
+	b.Lock()
+	if b.running {
+		close(b.stopCh)
+	}
+	b.Unlock()
 }
 
 // Subscribe creates a new subscription channel,
