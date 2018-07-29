@@ -40,10 +40,11 @@ func NewObserver(target string, broker *Broker) (*Observer, error) {
 //
 // Call this method as a goroutine.
 func (o *Observer) Start() {
-	log.Print("Worker observing ", o.Target)
+	o.log("started")
 	conn, listenErr := icmp.ListenPacket("udp4", "0.0.0.0")
 	if listenErr != nil {
-		log.Fatal(listenErr)
+		o.log("Could not observe target: %s", listenErr)
+		return
 	}
 	defer conn.Close()
 
@@ -66,7 +67,7 @@ func (o *Observer) Start() {
 		default:
 			wb, marshalErr := wm.Marshal(nil)
 			if marshalErr != nil {
-				log.Printf("Could not marshal messages to %s. Killing goroutine.", o.Target)
+				o.log("Could not marshal messages. Killing observer.")
 				return
 			}
 			// Send packet
@@ -79,12 +80,12 @@ func (o *Observer) Start() {
 			rb := make([]byte, 1500)
 			n, peer, readErr := conn.ReadFrom(rb)
 			if readErr != nil {
-				log.Print("Ignoring read error: %s", readErr)
+				o.log("Ignoring read error: %s", readErr)
 				continue
 			}
 			receivedAddr, castOk := peer.(*net.UDPAddr)
 			if !castOk {
-				log.Print("Couldn't cast to UDP address (ignored): ", peer)
+				o.log("Couldn't cast to UDP address (ignored): ", peer)
 				continue
 			}
 			if receivedAddr.IP.String() != o.Target {
@@ -100,7 +101,7 @@ func (o *Observer) Start() {
 			}
 			rm, parseErr := icmp.ParseMessage(ipv4.ICMPTypeEcho.Protocol(), rb[:n])
 			if parseErr != nil {
-				log.Print("Ignoring parse error: ", parseErr)
+				o.log("Ignoring parse error: ", parseErr)
 				continue
 			}
 			switch rm.Type {
@@ -109,7 +110,6 @@ func (o *Observer) Start() {
 				// https://stackoverflow.com/a/38560729
 				_, castOk := rm.Body.(*icmp.Echo)
 				if castOk {
-					//log.Printf("got reflection from %v for seq %d", peer, body.Seq)
 					o.Up()
 				} else {
 					o.Down()
@@ -117,7 +117,7 @@ func (o *Observer) Start() {
 			case ipv4.ICMPTypeDestinationUnreachable:
 				o.Down()
 			default:
-				log.Printf("got %+v; want echo reply", rm)
+				o.log("got %+v; want echo reply", rm)
 				o.Down()
 			}
 			wm.Body.(*icmp.Echo).Seq++
@@ -126,11 +126,13 @@ func (o *Observer) Start() {
 			time.Sleep(1 * time.Second)
 		}
 	}
+	o.log("stopped")
 }
 
 // Stop signals that the Observer's Start() method should exit.
 // Calling this twice will cause a panic, so don't do that.
 func (o *Observer) Stop() {
+	o.log("received stop")
 	close(o.stopCh)
 }
 
@@ -146,4 +148,14 @@ func (o *Observer) Up() {
 	o.status = true
 	u := &Update{Target: o.Target, Up: true}
 	o.Broker.Publish(u)
+}
+
+// log is an internal logger for the observer.
+func (o *Observer) log(s string, args ...interface{}) {
+	preface := fmt.Sprintf("Observer:%s ", o.Target)
+	if len(args) > 0 {
+		log.Print(preface + s)
+	} else {
+		log.Printf(preface+s, args...)
+	}
 }
