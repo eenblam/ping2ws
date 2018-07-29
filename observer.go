@@ -79,6 +79,7 @@ func (o *Observer) Start() {
 			_, writeErr := conn.WriteTo(wb, addr)
 			if writeErr != nil {
 				o.Down()
+				// Can't send a request, so we don't expect a response.
 				continue
 			}
 			// Receive response
