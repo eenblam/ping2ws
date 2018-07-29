@@ -177,8 +177,8 @@ func (o *Observer) Up() {
 func (o *Observer) log(s string, args ...interface{}) {
 	preface := fmt.Sprintf("Observer:%s ", o.Target)
 	if len(args) > 0 {
-		log.Print(preface + s)
-	} else {
 		log.Printf(preface+s, args...)
+	} else {
+		log.Print(preface + s)
 	}
 }
