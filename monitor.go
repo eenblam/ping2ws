@@ -58,24 +58,14 @@ func (m *Monitor) PingHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
-	log.Print("Upgrade success")
 	// Get pings
 	sub := m.Broker.Subscribe()
 	defer m.Broker.Unsubscribe(sub)
-	log.Print("Begin loop")
 	for {
 		// On receive, send on conn
 		select {
 		case update := <-sub:
 			// Publish to websocket connection
-			upd, castOk := update.(*Update)
-			if castOk {
-				if upd.Up {
-					log.Printf("Sending update: %s is UP", upd.Target)
-				} else {
-					log.Printf("Sending update: %s is DOWN", upd.Target)
-				}
-			}
 			conn.WriteJSON(update)
 		default:
 		}

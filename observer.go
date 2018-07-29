@@ -72,7 +72,6 @@ func (o *Observer) Start() {
 			// Send packet
 			_, writeErr := conn.WriteTo(wb, addr)
 			if writeErr != nil {
-				log.Print("Write error: ", writeErr)
 				o.Down()
 				continue
 			}
