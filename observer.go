@@ -83,10 +83,15 @@ func (o *Observer) Start() {
 				continue
 			}
 			// Receive response
+			deadlineErr := conn.SetReadDeadline(time.Now().Add(500 * time.Millisecond))
+			if deadlineErr != nil {
+				continue
+			}
 			rb := make([]byte, 1500)
 			n, peer, readErr := conn.ReadFrom(rb)
 			if readErr != nil {
-				o.log("Ignoring read error: %s", readErr)
+				// Ignore read error. Assume timeout due to no reply.
+				o.Down()
 				continue
 			}
 			receivedAddr, castOk := peer.(*net.UDPAddr)
@@ -94,9 +99,13 @@ func (o *Observer) Start() {
 				o.log("Couldn't cast to UDP address (ignored): ", peer)
 				continue
 			}
-			if receivedAddr.IP.String() != o.Target {
+			o.Lock()
+			target := o.Target
+			status := o.status
+			o.Unlock()
+			if receivedAddr.IP.String() != target {
 				// Response to someone else's ping.
-				if !o.status {
+				if !status {
 					// If we got someone else's reply BEFORE we get a positive response,
 					// report outage again.
 					//TODO This overreports more and more as number of targets increases.
@@ -148,16 +157,20 @@ func (o *Observer) Stop() {
 
 // Down publishes a negative status for the observed resource.
 func (o *Observer) Down() {
+	o.Lock()
 	o.status = false
 	u := &Update{Target: o.Target, Up: false}
 	o.Broker.Publish(u)
+	o.Unlock()
 }
 
 // Up publishes a positive status for the observed resource.
 func (o *Observer) Up() {
+	o.Lock()
 	o.status = true
 	u := &Update{Target: o.Target, Up: true}
 	o.Broker.Publish(u)
+	o.Unlock()
 }
 
 // log is an internal logger for the observer.
