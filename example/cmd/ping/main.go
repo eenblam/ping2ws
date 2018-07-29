@@ -13,7 +13,7 @@ func main() {
 		"172.30.0.1",
 		"127.0.0.1",
 	}
-	m := ping.NewMonitor(targets)
+	m := ping2ws.NewMonitor(targets)
 	defer m.Stop()
 	h := http.NewServeMux()
 	h.HandleFunc("/monitor", m.PingHandler)
