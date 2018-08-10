@@ -7,3 +7,7 @@ ssl:
 example:
 	cd example && go run cmd/ping/main.go
 
+linux:
+	# Allow unprivileged ICMP
+	# Some distros may need "1   0" instead?
+	sysctl -w net.ipv4.ping_group_range="0   2147483647"
