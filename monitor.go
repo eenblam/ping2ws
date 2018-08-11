@@ -10,7 +10,7 @@ import (
 // Monitor provides the main entrypoint into the package.
 type Monitor struct {
 	Broker    Broker
-	Observers []*Observer
+	Observers []Observer
 	Targets   []string
 }
 
@@ -20,9 +20,9 @@ func NewMonitor(targets []string) *Monitor {
 	broker := NewBroker()
 	go broker.Start()
 	// Create observers
-	observers := make([]*Observer, len(targets))
+	observers := make([]Observer, len(targets))
 	for i, target := range targets {
-		o, oErr := NewObserver(target, broker)
+		o, oErr := NewPingObserver(target, broker)
 		if oErr != nil {
 			log.Printf("Ignoring bad target: %s", target)
 			continue

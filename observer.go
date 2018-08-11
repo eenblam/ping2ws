@@ -12,7 +12,14 @@ import (
 	"golang.org/x/net/ipv4"
 )
 
-type Observer struct {
+type Observer interface {
+	Start()
+	Stop()
+	Down()
+	Up()
+}
+
+type PingObserver struct {
 	sync.Mutex
 	Target   string
 	Broker   Broker
@@ -22,12 +29,12 @@ type Observer struct {
 	running  bool
 }
 
-func NewObserver(target string, broker *Broker) (*Observer, error) {
+func NewPingObserver(target string, broker *Broker) (Observer, error) {
 	targetIP := net.ParseIP(target)
 	if targetIP == nil {
 		return nil, fmt.Errorf("Could not parse target IPv4 address: %s", target)
 	}
-	return &Observer{
+	return &PingObserver{
 		Target:   target,
 		Broker:   *broker,
 		stopCh:   make(chan struct{}),
@@ -37,13 +44,13 @@ func NewObserver(target string, broker *Broker) (*Observer, error) {
 	}, nil
 }
 
-// Start attempts to ping the Observer's Target
-// and Publishes the result to the Observer's Broker.
+// Start attempts to ping the PingObserver's Target
+// and Publishes the result to the PingObserver's Broker.
 //
 // ICMP echo request based on reference in x/net/icmp docs.
 //
 // Call this method as a goroutine.
-func (o *Observer) Start() {
+func (o *PingObserver) Start() {
 	o.log("started")
 	conn, listenErr := icmp.ListenPacket("udp4", "0.0.0.0")
 	if listenErr != nil {
@@ -143,9 +150,9 @@ func (o *Observer) Start() {
 	}
 }
 
-// Stop signals that the Observer's Start() method should exit.
+// Stop signals that the PingObserver's Start() method should exit.
 // Calling this twice will cause a panic, so don't do that.
-func (o *Observer) Stop() {
+func (o *PingObserver) Stop() {
 	o.Lock()
 	if o.running {
 		o.running = false
@@ -156,7 +163,7 @@ func (o *Observer) Stop() {
 }
 
 // Down publishes a negative status for the observed resource.
-func (o *Observer) Down() {
+func (o *PingObserver) Down() {
 	o.Lock()
 	o.status = false
 	u := &Update{Target: o.Target, Up: false}
@@ -165,7 +172,7 @@ func (o *Observer) Down() {
 }
 
 // Up publishes a positive status for the observed resource.
-func (o *Observer) Up() {
+func (o *PingObserver) Up() {
 	o.Lock()
 	o.status = true
 	u := &Update{Target: o.Target, Up: true}
@@ -174,7 +181,7 @@ func (o *Observer) Up() {
 }
 
 // log is an internal logger for the observer.
-func (o *Observer) log(s string, args ...interface{}) {
+func (o *PingObserver) log(s string, args ...interface{}) {
 	preface := fmt.Sprintf("Observer:%s ", o.Target)
 	if len(args) > 0 {
 		log.Printf(preface+s, args...)
