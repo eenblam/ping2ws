@@ -5,7 +5,8 @@ import (
 )
 
 // Courtesy of github.com/icza || stackoverflow.com/users/1705598/icza
-// See https://stackoverflow.com/a/49877632
+// Remixed from https://stackoverflow.com/a/49877632, cc-by-sa
+// https://creativecommons.org/licenses/by-sa/3.0/
 
 type Broker struct {
 	sync.Mutex
