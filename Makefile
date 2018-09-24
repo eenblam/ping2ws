@@ -7,6 +7,9 @@ ssl:
 example:
 	cd example && go run cmd/ping/main.go
 
+example-tcp:
+	cd example && go run cmd/tcp/main.go
+
 linux:
 	# Allow unprivileged ICMP
 	# Some distros may need "1   0" instead?
