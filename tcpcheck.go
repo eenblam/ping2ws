@@ -20,14 +20,20 @@ type TCPObserver struct {
 	timeout  time.Duration
 }
 
+// NewTCPObserver configures a new observer from an IP address and port number.
 func NewTCPObserver(address string, port uint, timeout time.Duration, broker *Broker) (Observer, error) {
 	targetIP := net.ParseIP(address)
 	if targetIP.To4() == nil {
 		return nil, fmt.Errorf("Invalid IPv4 address: %s", address)
 	}
 	target := fmt.Sprintf("%s:%d", address, port)
+	return NewTCPObserverFromString(target, timeout, broker)
+}
+
+// NewTCPObserverFromString configures a new observer from a host string of the form "ip:port"
+func NewTCPObserverFromString(host string, timeout time.Duration, broker *Broker) (Observer, error) {
 	return &TCPObserver{
-		Target:   target,
+		Target:   host,
 		Broker:   *broker,
 		stopCh:   make(chan struct{}),
 		updateCh: make(chan Update),
@@ -42,7 +48,9 @@ func NewTCPObserver(address string, port uint, timeout time.Duration, broker *Br
 // Call this method as a goroutine.
 func (o *TCPObserver) Start() {
 	o.log("started")
-	for {
+	ticker := time.NewTicker(o.timeout)
+	defer ticker.Stop()
+	for _ = range ticker.C {
 		select {
 		case <-o.stopCh:
 			o.log("stopped")
@@ -51,6 +59,7 @@ func (o *TCPObserver) Start() {
 			conn, dialErr := net.DialTimeout("tcp", o.Target, o.timeout)
 			if dialErr != nil {
 				o.Down()
+				continue
 			}
 			conn.Close()
 			o.Up()
